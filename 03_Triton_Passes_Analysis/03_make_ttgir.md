@@ -55,11 +55,13 @@ ttg.convert_layout %114 : tensor<128x!tt.ptr<i8>, #ttg.blocked<{sizePerThread = 
 
 - `buildCoalescedEncoding`에서, `contiguity`가 가장 높은 축을 order[0]으로 설정하여 워프 내 스레드들이 이 방향으로 나란히 서게 함
   - `contiguity`: 단순히 차원 크기가 아니라, 실제 주소값이 1씩 증가하는 최대 연속 길이
+    - 일반적인 레이아웃에서는 마지막 차원의 contiguity는 해당 차원의 크기이고, 나머지 차원은 1
 - `buildCoalescedEncoding`에서, `contiguity`와 `divisibility`를 기준으로 벡터화가 가능할지 판단
   - `divisibility`: 시작 주소가 몇 바이트 단위(2^n)로 정렬되어 있는지
   - min(Alignment, Contiguity, 128/elemNumBits)
     - 이 값이 4이면 vectorized 명령어 활용
-- **TODO**: MSDA에서 Vectorized Memory Load를 하지 않은 이유 디버깅
+  - 인덱스 계산에 사용되는 모든 변수는 int32 또는 int64와 같은 정수형을 사용해야 함
+  - 포인터나 오프셋이 16의 배수임을 컴파일러에 전달하여 `divisibility`를 살려야 함
 
 ### add_remove_layout_conversions (TTGIR)
 
@@ -75,10 +77,16 @@ ttg.convert_layout %114 : tensor<128x!tt.ptr<i8>, #ttg.blocked<{sizePerThread = 
 
 - 2번에서 변화
 - `lib/Dialect/TritonGPU/Transforms/AccelerateMatmul.cpp`에 위치
-- tt.dot의 입/출력 레이아웃을 Tensor Core에 맞게 변환
+- 기존 tt.dot의 Coalescing 친화적인 레이아웃을 Tensor Core에 맞게 변환
   - `#ttg.blocked` -> `#ttg.nvidia_mma`
-- tt.dot 전후로 `convert_layout`이 생성되었으므로, 이후 `add_remove_layout_conversions` 추가
-- **TODO**: PASS 세부 분석
+  - tt.dot 전후로 `convert_layout`이 생성되었으므로, 이후 `add_remove_layout_conversions` 추가
+- 사용자의 GPU 아키텍처에 따라 가장 최적화된 Tensor Core 버전을 선택
+  - SM < 75 (Volta): MMA v1 사용
+  - SM < 90 (Turing, Ampere, Ada): MMA v2 (tt.dot 그대로) 사용
+  - SM < 100 (Hopper): MMA v3 (ttng.warp_group_dot) 우선 사용, 안 되면 v2
+  - SM < 120 (Blackwell): MMA v5 (ttng.tc_gen5_mma) 우선 사용, 안 되면 v2
+- M축과 N축 타일 크기를 분석하여, 레지스터 압박을 최소화할 수 있는 최적의 워프 배치 비율을 탐색
+- FP4, FP8의 dot_scaled 연산에 대해서도 전용 MMA 변환 패스를 지원
 
 ```
 # Before

@@ -55,7 +55,7 @@ python3 python/triton/tools/compile.py \
 ```shell
 python3 python/triton/tools/compile.py \
   --kernel-name triton_multi_scale_deformable_attention_fwd_kernel \
-  --signature "*fp32,*fp32,*fp32,*fp32,*fp32,i32,i32,i32,i32,i32,i32,i32,64,4,4,0,0" \
+  --signature "*fp32,*fp32:16,*fp32,*fp32,*i32,i32,i32,i32:16,i32,i32,i32,i32,64,4,4,0,0" \
   --grid=100,2,8 \
   test_msda.py
 
@@ -64,7 +64,7 @@ python3 python/triton/tools/compile.py \
 # - *fp32: img_ptr (이미지 pyramid)
 # - *fp32: sampling_points_ptr (샘플링 포인트)
 # - *fp32: attention_weights_ptr (attention weights)
-# - *fp32: shapes_ptr (pyramid level shapes)
+# - *i32: shapes_ptr (pyramid level shapes)
 # - i32: B=2 (batch)
 # - i32: I=10000 (image pyramid pixels)
 # - i32: C=32 (channels)
