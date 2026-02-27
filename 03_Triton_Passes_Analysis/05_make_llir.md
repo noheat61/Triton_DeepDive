@@ -34,5 +34,6 @@ module attributes {ttg.global_scratch_memory_alignment = 1 : i32, ttg.global_scr
 ## add_to_llvmir
 
 - LLVM IR로 Lowering하는 Dialect Conversion (2장 참고)
+- Triton의 모든 Op에 대해, LLVM으로 Lowering하는 패턴이 등록되어 있음
 - `third_party/nvidia/include/TritonNVIDIAGPUToLLVM/TritonGPUToLLVM.cpp` 참고
-- **TODO**: TritonGPUToLLVM 세부 분석
+  - Op의 개수가 너무 많아서.. 필요할 때 찾아보는 것이 좋을 듯
